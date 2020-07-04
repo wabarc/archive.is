@@ -13,7 +13,9 @@ import (
 	"time"
 )
 
-type Archive struct {
+type Archiver struct {
+	Anyway string
+
 	url      string
 	final    string
 	submitid string
@@ -38,10 +40,7 @@ var (
 	}
 )
 
-func fetch(s string, ch chan<- string) {
-	start := time.Now()
-	var wabac Archive
-
+func (wbrc *Archiver) fetch(s string, ch chan<- string) {
 	// get valid domain and submitid
 	for _, domain := range domains {
 		h := fmt.Sprintf("%v://%v", scheme, domain)
@@ -49,25 +48,28 @@ func fetch(s string, ch chan<- string) {
 		if err != nil {
 			continue
 		}
-		wabac.url = h + "/submit/"
-		wabac.submitid = id
+		wbrc.url = h + "/submit/"
+		wbrc.submitid = id
 		break
 	}
 
-	if len(wabac.url) < 1 || len(wabac.submitid) < 1 {
+	if len(wbrc.url) < 1 || len(wbrc.submitid) < 1 {
 		ch <- fmt.Sprint("all archive is unsupported")
 		return
 	}
 
+	if wbrc.Anyway != "" {
+		anyway = wbrc.Anyway
+	}
 	client := &http.Client{
 		Timeout: timeout,
 	}
 	data := url.Values{
-		"submitid": {wabac.submitid},
+		"submitid": {wbrc.submitid},
 		"anyway":   {anyway},
 		"url":      {s},
 	}
-	req, err := http.NewRequest("POST", wabac.url, strings.NewReader(data.Encode()))
+	req, err := http.NewRequest("POST", wbrc.url, strings.NewReader(data.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
 	req.Header.Add("User-Agent", userAgent)
@@ -78,33 +80,31 @@ func fetch(s string, ch chan<- string) {
 	}
 	defer resp.Body.Close()
 
-	nbytes, err := io.Copy(ioutil.Discard, resp.Body)
+	_, err = io.Copy(ioutil.Discard, resp.Body)
 	if err != nil {
 		ch <- fmt.Sprint(err)
 		return
 	}
-	secs := time.Since(start).Seconds()
-	fmt.Printf("%.2fs %7d %s\n", secs, nbytes, s)
 
 	// Redirect to final url if page saved.
 	final := resp.Request.URL.String()
 	if len(final) > 0 {
-		wabac.final = final
+		wbrc.final = final
 	}
 	loc := resp.Header.Get("Location")
 	if len(loc) > 2 {
-		wabac.final = loc
+		wbrc.final = loc
 	}
 	// When use anyway parameter.
 	refresh := resp.Header.Get("refresh")
 	if len(refresh) > 0 {
 		r := strings.Split(refresh, ";url=")
 		if len(r) == 2 {
-			wabac.final = r[1]
+			wbrc.final = r[1]
 		}
 	}
 
-	ch <- wabac.final
+	ch <- wbrc.final
 }
 
 func getSubmitID(url string) (string, error) {

@@ -1,35 +1,27 @@
 package is
 
 import (
-	"fmt"
-	"time"
+	"log"
 )
 
-func Wayback(links []string) []string {
-	start := time.Now()
-	worklist := make(map[string]string)
+// Wayback is the handle of saving webpages to archive.is
+func (wbrc *Archiver) Wayback(links []string) (map[string]string, error) {
+	collect := make(map[string]string)
 	for _, link := range links {
 		if !isURL(link) {
-			fmt.Println(link + " is invalid url.")
+			log.Print(link + " is invalid url.")
 			continue
 		}
-		worklist[link] = link
+		collect[link] = link
 	}
 
-	var collect []string
-	if len(worklist) < 1 {
-		return collect
-	}
-
-	ch := make(chan string, len(worklist))
+	ch := make(chan string, len(collect))
 	defer close(ch)
 
-	for link := range worklist {
-		go fetch(link, ch)
-		collect = append(collect, <-ch)
+	for link := range collect {
+		go wbrc.fetch(link, ch)
+		collect[link] = <-ch
 	}
 
-	fmt.Printf("%.2fs elapsed\n\n", time.Since(start).Seconds())
-
-	return collect
+	return collect, nil
 }
