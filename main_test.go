@@ -1,17 +1,20 @@
 package main
 
 import (
-	"github.com/wabarc/archive.is/pkg"
 	"strings"
 	"testing"
+
+	"github.com/wabarc/archive.is/pkg"
 )
 
 func TestWayback(t *testing.T) {
 	links := []string{"https://www.google.com"}
-	got := is.Wayback(links)
-	s := strings.Join(got, " ")
-	if strings.Contains(s, "archive") == false {
-		t.Error(got)
-		t.Fail()
+	wbrc := &is.Archiver{}
+	got, _ := wbrc.Wayback(links)
+	for _, dest := range got {
+		if strings.Contains(dest, "archive") == false {
+			t.Error(got)
+			t.Fail()
+		}
 	}
 }
