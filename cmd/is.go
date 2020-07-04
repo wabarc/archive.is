@@ -3,8 +3,9 @@ package is
 import (
 	"flag"
 	"fmt"
-	"github.com/wabarc/archive.is/pkg"
 	"os"
+
+	"github.com/wabarc/archive.is/pkg"
 )
 
 func Run() {
@@ -19,8 +20,9 @@ func Run() {
 		os.Exit(1)
 	}
 
-	saved := is.Wayback(args)
-	for _, link := range saved {
-		fmt.Println(link)
+	wbrc := &is.Archiver{}
+	saved, _ := wbrc.Wayback(args)
+	for orig, dest := range saved {
+		fmt.Println(orig, "=>", dest)
 	}
 }
