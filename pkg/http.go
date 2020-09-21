@@ -2,34 +2,35 @@ package is
 
 import (
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 type Archiver struct {
 	Anyway string
+	Cookie string
 
 	url      string
 	final    string
 	submitid string
 }
 
-const (
-	userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36"
-	timeout   = time.Duration(30) * time.Second
-)
-
 var (
-	anyway  = "0"
-	scheme  = "https"
-	domains = []string{
+	userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36"
+	anyway    = "0"
+	scheme    = "https"
+	cookie    = "cf_clearance=dd7e157eb2d43acf2decfafd13c650dd80d825b5-1600696752-KXZXFYWE"
+	timeout   = time.Duration(30) * time.Second
+	domains   = []string{
 		"archive.li",
 		"archive.vn",
 		"archive.fo",
@@ -44,7 +45,7 @@ func (wbrc *Archiver) fetch(s string, ch chan<- string) {
 	// get valid domain and submitid
 	for _, domain := range domains {
 		h := fmt.Sprintf("%v://%v", scheme, domain)
-		id, err := getSubmitID(h)
+		id, err := wbrc.getSubmitID(h)
 		if err != nil {
 			continue
 		}
@@ -73,12 +74,19 @@ func (wbrc *Archiver) fetch(s string, ch chan<- string) {
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
 	req.Header.Add("User-Agent", userAgent)
+	req.Header.Add("Cookie", wbrc.getCookie())
 	resp, err := client.Do(req)
 	if err != nil {
 		ch <- fmt.Sprint(err)
 		return
 	}
 	defer resp.Body.Close()
+
+	code := resp.StatusCode / 100
+	if code == 1 || code == 4 || code == 5 {
+		ch <- fmt.Sprint("no access")
+		return
+	}
 
 	_, err = io.Copy(ioutil.Discard, resp.Body)
 	if err != nil {
@@ -88,10 +96,10 @@ func (wbrc *Archiver) fetch(s string, ch chan<- string) {
 
 	// Redirect to final url if page saved.
 	final := resp.Request.URL.String()
-	if len(final) > 0 {
+	if len(final) > 0 && strings.Contains(final, "/submit/") == false {
 		wbrc.final = final
 	}
-	loc := resp.Header.Get("Location")
+	loc := resp.Header.Get("location")
 	if len(loc) > 2 {
 		wbrc.final = loc
 	}
@@ -107,12 +115,34 @@ func (wbrc *Archiver) fetch(s string, ch chan<- string) {
 	ch <- wbrc.final
 }
 
-func getSubmitID(url string) (string, error) {
+func (wbrc *Archiver) getCookie() string {
+	c := os.Getenv("ARCHIVE_COOKIE")
+	if c != "" {
+		wbrc.Cookie = c
+	}
+
+	if wbrc.Cookie != "" {
+		return wbrc.Cookie
+	} else {
+		return cookie
+	}
+}
+
+func (wbrc *Archiver) getSubmitID(url string) (string, error) {
 	if strings.Contains(url, "http") == false {
 		return "", fmt.Errorf("missing protocol scheme")
 	}
 
-	resp, err := http.Get(url)
+	client := &http.Client{
+		Timeout: timeout,
+	}
+
+	r := strings.NewReader("")
+	req, err := http.NewRequest("GET", url, r)
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("User-Agent", userAgent)
+	req.Header.Add("Cookie", wbrc.getCookie())
+	resp, err := client.Do(req)
 
 	if err != nil {
 		return "", err
