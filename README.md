@@ -50,7 +50,7 @@ func main() {
 
 ## FAQ
 
-- Archive.today is unavailable?
+### Archive.today is unavailable?
 
 Archive.today may have enforced a strictly CAPTCHA policy, causing an exception to the request.
 
@@ -61,5 +61,5 @@ such as `ARCHIVE_COOKIE=cf_clearance=ab170e4acc49bbnsaff8687212d2cdb987e5b798-12
 
 ## License
 
-Permissive GPL 3.0 license, see the [LICENSE](https://github.com/wabarc/archive.is/blob/master/LICENSE) file for details.
+This software is released under the terms of the GNU General Public License v3.0. See the [LICENSE](https://github.com/wabarc/archive.is/blob/master/LICENSE) file for details.
 
