@@ -55,7 +55,7 @@ func (wbrc *Archiver) fetch(s string, ch chan<- string) {
 	}
 
 	if len(wbrc.url) < 1 || len(wbrc.submitid) < 1 {
-		ch <- fmt.Sprint("all archive is unsupported")
+		ch <- fmt.Sprint("Archive.today is unavailable.")
 		return
 	}
 

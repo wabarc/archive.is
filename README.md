@@ -48,6 +48,17 @@ func main() {
 // https://www.bbc.com => https://archive.li/HjqQV
 ```
 
+## FAQ
+
+- Archive.today is unavailable?
+
+Archive.today may have enforced a strictly CAPTCHA policy, causing an exception to the request.
+
+Solve:
+
+Find `cf_clearance` item from cookies, and set as system environmental variable `ARCHIVE_COOKIE`,
+such as `ARCHIVE_COOKIE=cf_clearance=ab170e4acc49bbnsaff8687212d2cdb987e5b798-1234542375-KDUKCHU`
+
 ## License
 
 Permissive GPL 3.0 license, see the [LICENSE](https://github.com/wabarc/archive.is/blob/master/LICENSE) file for details.
