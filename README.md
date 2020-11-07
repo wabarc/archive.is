@@ -61,5 +61,5 @@ such as `ARCHIVE_COOKIE=cf_clearance=ab170e4acc49bbnsaff8687212d2cdb987e5b798-12
 
 ## License
 
-This software is released under the terms of the GNU General Public License v3.0. See the [LICENSE](https://github.com/wabarc/archive.is/blob/master/LICENSE) file for details.
+This software is released under the terms of the GNU General Public License v3.0. See the [LICENSE](https://github.com/wabarc/archive.is/blob/main/LICENSE) file for details.
 
