@@ -168,12 +168,8 @@ func (wbrc *Archiver) getSubmitID(url string) (string, error) {
 }
 
 func isURL(str string) bool {
-	re := regexp.MustCompile(`(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)`)
+	re := regexp.MustCompile(`https?://?[-a-zA-Z0-9@:%._\+~#=]{1,255}\.[a-z]{0,63}\b(?:[-a-zA-Z0-9@:%_\+.~#?&//=]*)`)
 	match := re.FindAllString(str, -1)
-	for _, el := range match {
-		if len(el) > 2 {
-			return true
-		}
-	}
-	return false
+
+	return len(match) >= 1
 }
