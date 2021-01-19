@@ -18,11 +18,13 @@ on:
 jobs:
   test:
     name: Test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ ubuntu-latest, windows-latest ]
+    runs-on: ubuntu-latest
     steps:
+    - name: Set up Tor
+      run: |
+        sudo apt update
+        sudo apt install -y tor
+
     - name: Set up Go 1.x
       uses: actions/setup-go@v2
       with:
