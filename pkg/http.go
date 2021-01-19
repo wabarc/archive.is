@@ -1,9 +1,12 @@
 package is
 
 import (
+	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,63 +22,95 @@ type Archiver struct {
 	Anyway string
 	Cookie string
 
-	url      string
-	final    string
-	submitid string
+	DialContext         func(ctx context.Context, network, addr string) (net.Conn, error)
+	SkipTLSVerification bool
+
+	url        *url.URL
+	final      string
+	submitid   string
+	httpClient *http.Client
 }
 
 var (
 	userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36"
 	anyway    = "0"
 	scheme    = "https"
+	onion     = "archivecaslytosk.onion" // archiveiya74codqgiixo33q62qlrqtkgmcitqx5u2oeqnmn5bpcbiyd.onion
 	cookie    = "cf_clearance=dd7e157eb2d43acf2decfafd13c650dd80d825b5-1600696752-KXZXFYWE"
-	timeout   = time.Duration(30) * time.Second
+	timeout   = 120 * time.Second
 	domains   = []string{
+		"archive.today",
+		"archive.is",
 		"archive.li",
 		"archive.vn",
 		"archive.fo",
 		"archive.md",
 		"archive.ph",
-		"archive.today",
-		"archive.is",
 	}
 )
 
 func (wbrc *Archiver) fetch(s string, ch chan<- string) {
-	// get valid domain and submitid
-	for _, domain := range domains {
-		h := fmt.Sprintf("%v://%v", scheme, domain)
-		id, err := wbrc.getSubmitID(h)
-		if err != nil {
-			continue
-		}
-		wbrc.url = h + "/submit/"
-		wbrc.submitid = id
-		break
+	wbrc.httpClient = &http.Client{
+		Timeout: timeout,
 	}
 
-	if len(wbrc.url) < 1 || len(wbrc.submitid) < 1 {
-		ch <- fmt.Sprint("Archive.today is unavailable.")
-		return
+	// get valid domain and submitid
+	r := func(domains []string) {
+		for _, domain := range domains {
+			h := fmt.Sprintf("%v://%v", scheme, domain)
+			id, err := wbrc.getSubmitID(h)
+			if err != nil {
+				continue
+			}
+			wbrc.url, _ = url.Parse(h)
+			wbrc.submitid = id
+			break
+		}
+	}
+	r(domains)
+
+	if wbrc.url == nil || wbrc.submitid == "" {
+		// Try request over Tor hidden service.
+		if tor, err := wbrc.dialTor(); err != nil {
+			ch <- fmt.Sprint("Tor network unreachable.")
+			return
+		} else {
+			defer tor.Close()
+		}
+		wbrc.httpClient = &http.Client{
+			Timeout: timeout,
+			Transport: &http.Transport{
+				DialContext: wbrc.DialContext,
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: wbrc.SkipTLSVerification,
+				},
+			},
+		}
+
+		r([]string{onion})
+		if wbrc.url == nil || wbrc.submitid == "" {
+			ch <- fmt.Sprint("archive.today is unavailable.")
+			return
+		}
 	}
 
 	if wbrc.Anyway != "" {
 		anyway = wbrc.Anyway
-	}
-	client := &http.Client{
-		Timeout: timeout,
 	}
 	data := url.Values{
 		"submitid": {wbrc.submitid},
 		"anyway":   {anyway},
 		"url":      {s},
 	}
-	req, err := http.NewRequest("POST", wbrc.url, strings.NewReader(data.Encode()))
+	req, err := http.NewRequest("POST", wbrc.url.String()+"/submit/", strings.NewReader(data.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
 	req.Header.Add("User-Agent", userAgent)
+	req.Header.Add("Referer", wbrc.url.String())
+	req.Header.Add("Origin", wbrc.url.String())
+	req.Header.Add("Host", wbrc.url.Hostname())
 	req.Header.Add("Cookie", wbrc.getCookie())
-	resp, err := client.Do(req)
+	resp, err := wbrc.httpClient.Do(req)
 	if err != nil {
 		ch <- fmt.Sprint(err)
 		return
@@ -133,17 +168,12 @@ func (wbrc *Archiver) getSubmitID(url string) (string, error) {
 		return "", fmt.Errorf("missing protocol scheme")
 	}
 
-	client := &http.Client{
-		Timeout: timeout,
-	}
-
 	r := strings.NewReader("")
 	req, err := http.NewRequest("GET", url, r)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("User-Agent", userAgent)
 	req.Header.Add("Cookie", wbrc.getCookie())
-	resp, err := client.Do(req)
-
+	resp, err := wbrc.httpClient.Do(req)
 	if err != nil {
 		return "", err
 	}

@@ -2,6 +2,7 @@ package is
 
 import (
 	"log"
+	"strings"
 )
 
 // Wayback is the handle of saving webpages to archive.is
@@ -20,7 +21,7 @@ func (wbrc *Archiver) Wayback(links []string) (map[string]string, error) {
 
 	for link := range collect {
 		go wbrc.fetch(link, ch)
-		collect[link] = <-ch
+		collect[link] = strings.Replace(<-ch, onion, "archive.today", 1)
 	}
 
 	return collect, nil
