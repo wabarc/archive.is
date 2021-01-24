@@ -4,9 +4,19 @@ This package is a command-line tool named `archive.is` saving webpage to [archiv
 
 ## Installation
 
+From source:
+
 ```sh
 $ go get github.com/wabarc/archive.is
 ```
+
+From [gobinaries.com](https://gobinaries.com):
+
+```sh
+$ curl -sf https://gobinaries.com/wabarc/archive.is | sh
+```
+
+From [releases](https://github.com/wabarc/archive.is/releases)
 
 ## Usage
 
