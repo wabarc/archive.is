@@ -60,7 +60,7 @@ func main() {
 
 ## FAQ
 
-### Archive.today is unavailable?
+### archive.today is unavailable?
 
 Archive.today may have enforced a strictly CAPTCHA policy, causing an exception to the request.
 

@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -26,7 +25,6 @@ type Archiver struct {
 
 	final    string
 	submitid string
-	isTor    bool
 
 	httpClient *http.Client
 	torClient  *http.Client
@@ -69,17 +67,17 @@ func (wbrc *Archiver) fetch(s string, ch chan<- string) {
 			break
 		}
 	}
-	r(domains)
 
-	if baseuri == nil || wbrc.submitid == "" {
-		// Try request over Tor hidden service.
-		if wbrc.torClient == nil {
-			ch <- fmt.Sprint("Tor network unreachable.")
-			return
-		}
+	// Try request over Tor hidden service.
+	if wbrc.torClient != nil {
 		wbrc.httpClient = wbrc.torClient
 
 		r([]string{onion})
+	}
+	defer wbrc.clear()
+
+	if baseuri == nil || wbrc.submitid == "" {
+		r(domains)
 		if baseuri == nil || wbrc.submitid == "" {
 			ch <- fmt.Sprint("archive.today is unavailable.")
 			return
@@ -190,9 +188,8 @@ func (wbrc *Archiver) getSubmitID(url string) (string, error) {
 	return id, nil
 }
 
-func isURL(str string) bool {
-	re := regexp.MustCompile(`https?://?[-a-zA-Z0-9@:%._\+~#=]{1,255}\.[a-z]{0,63}\b(?:[-a-zA-Z0-9@:%_\+.~#?&//=]*)`)
-	match := re.FindAllString(str, -1)
-
-	return len(match) >= 1
+func (wbrc *Archiver) clear() {
+	baseuri = nil
+	wbrc.final = ""
+	wbrc.submitid = ""
 }
