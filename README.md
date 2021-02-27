@@ -4,7 +4,7 @@ This package is a command-line tool named `archive.is` saving webpage to [archiv
 
 ## Installation
 
-From source:
+From source (^Go 1.12):
 
 ```sh
 $ go get github.com/wabarc/archive.is
