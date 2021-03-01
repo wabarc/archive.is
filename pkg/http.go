@@ -35,7 +35,7 @@ var (
 	anyway    = "0"
 	scheme    = "http"
 	onion     = "archivecaslytosk.onion" // archiveiya74codqgiixo33q62qlrqtkgmcitqx5u2oeqnmn5bpcbiyd.onion
-	cookie    = "cf_clearance=dd7e157eb2d43acf2decfafd13c650dd80d825b5-1600696752-KXZXFYWE"
+	cookie    = ""
 	timeout   = 120 * time.Second
 	baseuri   *url.URL
 	domains   = []string{
@@ -90,14 +90,15 @@ func (wbrc *Archiver) fetch(s string, ch chan<- string) {
 	data := url.Values{
 		"submitid": {wbrc.submitid},
 		"anyway":   {anyway},
-		"url":      {s},
+		"url":      {url.QueryEscape(s)},
 	}
+	uri := baseuri.String()
 	req, err := http.NewRequest("POST", baseuri.String()+"/submit/", strings.NewReader(data.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
 	req.Header.Add("User-Agent", userAgent)
-	req.Header.Add("Referer", baseuri.String())
-	req.Header.Add("Origin", baseuri.String())
+	req.Header.Add("Referer", uri)
+	req.Header.Add("Origin", uri)
 	req.Header.Add("Host", baseuri.Hostname())
 	req.Header.Add("Cookie", wbrc.getCookie())
 	resp, err := wbrc.httpClient.Do(req)
@@ -109,7 +110,7 @@ func (wbrc *Archiver) fetch(s string, ch chan<- string) {
 
 	code := resp.StatusCode / 100
 	if code == 1 || code == 4 || code == 5 {
-		final := fmt.Sprintf("%v?url=%s", baseuri.String(), s)
+		final := fmt.Sprintf("%s?url=%s", uri, s)
 		ch <- final
 		return
 	}
@@ -168,7 +169,6 @@ func (wbrc *Archiver) getSubmitID(url string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
