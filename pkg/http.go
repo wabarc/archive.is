@@ -90,7 +90,7 @@ func (wbrc *Archiver) fetch(s string, ch chan<- string) {
 	data := url.Values{
 		"submitid": {wbrc.submitid},
 		"anyway":   {anyway},
-		"url":      {url.QueryEscape(s)},
+		"url":      {s},
 	}
 	uri := baseuri.String()
 	req, err := http.NewRequest("POST", baseuri.String()+"/submit/", strings.NewReader(data.Encode()))
