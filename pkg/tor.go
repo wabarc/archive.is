@@ -6,6 +6,7 @@ import (
 	"fmt"
 	// "net"
 	"net/http"
+	"os"
 	"os/exec"
 	"runtime"
 	"time"
@@ -21,7 +22,8 @@ func (arc *Archiver) newTorClient() (*http.Client, *tor.Tor, error) {
 	}
 
 	// Start tor with default config
-	t, err := tor.Start(nil, nil)
+	startConf := &tor.StartConf{TempDataDirBase: os.TempDir()}
+	t, err := tor.Start(nil, startConf)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Make connection failed: %w", err)
 	}
