@@ -1,11 +1,9 @@
 package is
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -16,16 +14,13 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-type Archiver struct {
-	Anyway string
-	Cookie string
+type IS struct {
+	wbrc *Archiver
 
-	DialContext         func(ctx context.Context, network, addr string) (net.Conn, error)
-	SkipTLSVerification bool
-
-	final    string
 	submitid string
+	final    string
 
+	baseuri    *url.URL
 	httpClient *http.Client
 	torClient  *http.Client
 }
@@ -37,7 +32,6 @@ var (
 	onion     = "archivecaslytosk.onion" // archiveiya74codqgiixo33q62qlrqtkgmcitqx5u2oeqnmn5bpcbiyd.onion
 	cookie    = ""
 	timeout   = 120 * time.Second
-	baseuri   *url.URL
 	domains   = []string{
 		"archive.today",
 		"archive.is",
@@ -49,59 +43,54 @@ var (
 	}
 )
 
-func (wbrc *Archiver) fetch(s string, ch chan<- string) {
-	wbrc.httpClient = &http.Client{
-		Timeout: timeout,
-	}
-
+func (is *IS) fetch(s string, ch chan<- string) {
 	// get valid domain and submitid
 	r := func(domains []string) {
 		for _, domain := range domains {
 			h := fmt.Sprintf("%v://%v", scheme, domain)
-			id, err := wbrc.getSubmitID(h)
+			id, err := is.getSubmitID(h)
 			if err != nil {
 				continue
 			}
-			baseuri, _ = url.Parse(h)
-			wbrc.submitid = id
+			is.baseuri, _ = url.Parse(h)
+			is.submitid = id
 			break
 		}
 	}
 
 	// Try request over Tor hidden service.
-	if wbrc.torClient != nil {
-		wbrc.httpClient = wbrc.torClient
+	if is.torClient != nil {
+		is.httpClient = is.torClient
 
 		r([]string{onion})
 	}
-	defer wbrc.clear()
 
-	if baseuri == nil || wbrc.submitid == "" {
+	if is.baseuri == nil || is.submitid == "" {
 		r(domains)
-		if baseuri == nil || wbrc.submitid == "" {
+		if is.baseuri == nil || is.submitid == "" {
 			ch <- fmt.Sprint("archive.today is unavailable.")
 			return
 		}
 	}
 
-	if wbrc.Anyway != "" {
-		anyway = wbrc.Anyway
+	if is.wbrc.Anyway != "" {
+		anyway = is.wbrc.Anyway
 	}
 	data := url.Values{
-		"submitid": {wbrc.submitid},
+		"submitid": {is.submitid},
 		"anyway":   {anyway},
 		"url":      {s},
 	}
-	uri := baseuri.String()
-	req, err := http.NewRequest("POST", baseuri.String()+"/submit/", strings.NewReader(data.Encode()))
+	uri := is.baseuri.String()
+	req, err := http.NewRequest("POST", is.baseuri.String()+"/submit/", strings.NewReader(data.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
 	req.Header.Add("User-Agent", userAgent)
 	req.Header.Add("Referer", uri)
 	req.Header.Add("Origin", uri)
-	req.Header.Add("Host", baseuri.Hostname())
-	req.Header.Add("Cookie", wbrc.getCookie())
-	resp, err := wbrc.httpClient.Do(req)
+	req.Header.Add("Host", is.baseuri.Hostname())
+	req.Header.Add("Cookie", is.getCookie())
+	resp, err := is.httpClient.Do(req)
 	if err != nil {
 		ch <- fmt.Sprint(err)
 		return
@@ -124,38 +113,38 @@ func (wbrc *Archiver) fetch(s string, ch chan<- string) {
 	// Redirect to final url if page saved.
 	final := resp.Request.URL.String()
 	if len(final) > 0 && strings.Contains(final, "/submit/") == false {
-		wbrc.final = final
+		is.final = final
 	}
 	loc := resp.Header.Get("location")
 	if len(loc) > 2 {
-		wbrc.final = loc
+		is.final = loc
 	}
 	// When use anyway parameter.
 	refresh := resp.Header.Get("refresh")
 	if len(refresh) > 0 {
 		r := strings.Split(refresh, ";url=")
 		if len(r) == 2 {
-			wbrc.final = r[1]
+			is.final = r[1]
 		}
 	}
 
-	ch <- wbrc.final
+	ch <- is.final
 }
 
-func (wbrc *Archiver) getCookie() string {
+func (is *IS) getCookie() string {
 	c := os.Getenv("ARCHIVE_COOKIE")
 	if c != "" {
-		wbrc.Cookie = c
+		is.wbrc.Cookie = c
 	}
 
-	if wbrc.Cookie != "" {
-		return wbrc.Cookie
+	if is.wbrc.Cookie != "" {
+		return is.wbrc.Cookie
 	} else {
 		return cookie
 	}
 }
 
-func (wbrc *Archiver) getSubmitID(url string) (string, error) {
+func (is *IS) getSubmitID(url string) (string, error) {
 	if strings.Contains(url, "http") == false {
 		return "", fmt.Errorf("missing protocol scheme")
 	}
@@ -164,8 +153,8 @@ func (wbrc *Archiver) getSubmitID(url string) (string, error) {
 	req, err := http.NewRequest("GET", url, r)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("User-Agent", userAgent)
-	req.Header.Add("Cookie", wbrc.getCookie())
-	resp, err := wbrc.httpClient.Do(req)
+	req.Header.Add("Cookie", is.getCookie())
+	resp, err := is.httpClient.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -186,10 +175,4 @@ func (wbrc *Archiver) getSubmitID(url string) (string, error) {
 	}
 
 	return id, nil
-}
-
-func (wbrc *Archiver) clear() {
-	baseuri = nil
-	wbrc.final = ""
-	wbrc.submitid = ""
 }

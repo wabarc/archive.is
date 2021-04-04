@@ -15,7 +15,7 @@ import (
 	// "golang.org/x/net/proxy"
 )
 
-func (arc *Archiver) newTorClient() (*http.Client, *tor.Tor, error) {
+func newTorClient() (*http.Client, *tor.Tor, error) {
 	// Lookup tor executable file
 	if _, err := exec.LookPath("tor"); err != nil {
 		return nil, nil, fmt.Errorf("%w", err)

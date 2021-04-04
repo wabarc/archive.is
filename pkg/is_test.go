@@ -19,7 +19,7 @@ func TestWayback(t *testing.T) {
 	links = []string{"https://www.bbc.com/", "https://www.google.com/"}
 	got, _ = wbrc.Wayback(links)
 	if len(got) == 0 {
-		t.Errorf("got = %d; want not equal 0", len(got))
+		t.Errorf("got = %d; want greater than 0", len(got))
 	}
 
 	for orig, dest := range got {
