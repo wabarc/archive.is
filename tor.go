@@ -51,7 +51,8 @@ func newTorClient() (*http.Client, *tor.Tor, error) {
 	// })
 
 	return &http.Client{
-		Timeout: timeout,
+		Timeout:       timeout,
+		CheckRedirect: noRedirect,
 		Transport: &http.Transport{
 			Proxy:                 http.ProxyFromEnvironment,
 			DialContext:           dialer.DialContext,

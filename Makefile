@@ -4,9 +4,7 @@ export GOPROXY = https://proxy.golang.org
 NAME = archive.is
 BINDIR ?= ./build/binary
 PACKDIR ?= ./build/package
-LDFLAGS := $(shell echo "-X 'archive.is/version.Version=`git describe --tags --abbrev=0`'")
-LDFLAGS := $(shell echo "${LDFLAGS} -X 'archive.is/version.Commit=`git rev-parse --short HEAD`'")
-LDFLAGS := $(shell echo "${LDFLAGS} -X 'archive.is/version.BuildDate=`date +%FT%T%z`'")
+LDFLAGS := $(shell echo "-X 'github.com/wabarc/archive.is.Version=`git describe --tags --abbrev=0`'")
 GOBUILD ?= CGO_ENABLED=0 go build -trimpath --ldflags "-s -w ${LDFLAGS} -buildid=" -v
 VERSION ?= $(shell git describe --tags `git rev-list --tags --max-count=1` | sed -e 's/v//g')
 GOFILES ?= $(wildcard ./cmd/archive.is/*.go)
@@ -15,6 +13,7 @@ PACKAGES ?= $(shell go list ./...)
 
 PLATFORM_LIST = \
 	darwin-amd64 \
+	darwin-arm64 \
 	linux-386 \
 	linux-amd64 \
 	linux-armv5 \
@@ -42,6 +41,7 @@ WINDOWS_ARCH_LIST = \
 .PHONY: \
 	darwin-386 \
 	darwin-amd64 \
+	darwin-arm64 \
 	linux-386 \
 	linux-amd64 \
 	linux-armv5 \
@@ -68,11 +68,7 @@ WINDOWS_ARCH_LIST = \
 	releases \
 	clean \
 	test \
-	fmt \
-	rpm \
-	debian \
-	debian-packages \
-	docker-image
+	fmt
 
 darwin-386:
 	GOARCH=386 GOOS=darwin $(GOBUILD) -o $(BINDIR)/$(NAME)-$@ $(GOFILES)

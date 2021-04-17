@@ -44,6 +44,8 @@ jobs:
             arch: ppc64
           - os: linux
             arch: ppc64le
+          - os: darwin
+            arch: arm64
         exclude:
           - os: darwin
             arch: 386
@@ -68,7 +70,7 @@ jobs:
     - name: Set up Go 1.x
       uses: actions/setup-go@v2
       with:
-        go-version: ^1.15
+        go-version: ^1.16
 
     - name: Build fat binary
       id: builder
@@ -128,24 +130,19 @@ jobs:
         path: archive-is # Put files to archive.is directory
 
     - name: Create Release
-      uses: actions/create-release@v1
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
         body: |
+          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ github.sha }}/CHANGELOG.md).
+
           **Digests in this release:**
 
           ```
           ${{ needs.checksum.outputs.digest }}
           ```
-        draft: false
-        prerelease: true
-
-    - name: Upload release assets
-      uses: fnkr/github-action-ghr@v1
-      if: startsWith(github.ref, 'refs/tags/')
-      env:
-        GHR_PATH: archive-is/
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        draft: true
+        files: |
+          archive-is/*
