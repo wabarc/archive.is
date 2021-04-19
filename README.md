@@ -58,6 +58,16 @@ func main() {
 // https://www.bbc.com => https://archive.li/HjqQV
 ```
 
+### Access Tor Hidden Service
+
+[archive.today](https://archive.today) providing [Tor Hidden Service](http://archivecaslytosk.onion/) to saving webpage, and it's preferred to access 
+Tor Hidden Service, access <http://archive.today> if Tor Hidden Service is unavailable.
+
+By default, the program will dial a proxy using tor socks port `127.0.0.1:9050`, 
+use `TOR_HOST` and `TOR_SOCKS_PORT` specified a different host and port
+
+It'll look up tor executable file if dial socks proxy failed, and start it to dial proxy.
+
 ## FAQ
 
 ### archive.today is unavailable?

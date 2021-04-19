@@ -55,6 +55,12 @@ var (
 	}
 )
 
+func init() {
+	if os.Getenv("DEBUG") != "" {
+		logger.EnableDebug()
+	}
+}
+
 // Wayback is the handle of saving webpages to archive.is
 func (wbrc *Archiver) Wayback(links []string) (map[string]string, error) {
 	collects, results := make(map[string]string), make(map[string]string)
@@ -66,11 +72,16 @@ func (wbrc *Archiver) Wayback(links []string) (map[string]string, error) {
 		collects[link] = link
 	}
 
-	torClient, tor, err := newTorClient()
+	done := make(chan bool, 1)
+	torClient, err := newTorClient(done)
 	if err != nil {
 		logger.Error("%v", err)
-	} else {
-		defer tor.Close()
+	}
+
+	is := &IS{
+		wbrc:       wbrc,
+		httpClient: &http.Client{Timeout: timeout, CheckRedirect: noRedirect},
+		torClient:  torClient,
 	}
 
 	ch := make(chan string, len(collects))
@@ -81,13 +92,8 @@ func (wbrc *Archiver) Wayback(links []string) (map[string]string, error) {
 	for _, link := range collects {
 		wg.Add(1)
 		go func(link string) {
-			is := &IS{
-				wbrc:       wbrc,
-				httpClient: &http.Client{Timeout: timeout, CheckRedirect: noRedirect},
-				torClient:  torClient,
-				submitid:   "",
-			}
 			mu.Lock()
+			is.submitid = ""
 			is.archive(link, ch)
 			results[link] = strings.Replace(<-ch, onion, "archive.today", 1)
 			mu.Unlock()
@@ -95,6 +101,9 @@ func (wbrc *Archiver) Wayback(links []string) (map[string]string, error) {
 		}(link)
 	}
 	wg.Wait()
+
+	// Close tor connection
+	done <- true
 
 	if len(results) == 0 {
 		return results, fmt.Errorf("No results")
@@ -115,11 +124,16 @@ func (wbrc *Archiver) Playback(links []string) (map[string]string, error) {
 		return results, fmt.Errorf("No found URL")
 	}
 
-	torClient, tor, err := newTorClient()
+	done := make(chan bool, 1)
+	torClient, err := newTorClient(done)
 	if err != nil {
 		logger.Error("%v", err)
-	} else {
-		defer tor.Close()
+	}
+
+	is := &IS{
+		wbrc:       wbrc,
+		httpClient: &http.Client{Timeout: timeout, CheckRedirect: noRedirect},
+		torClient:  torClient,
 	}
 
 	ch := make(chan string, len(collects))
@@ -130,13 +144,8 @@ func (wbrc *Archiver) Playback(links []string) (map[string]string, error) {
 	for _, link := range collects {
 		wg.Add(1)
 		go func(link string) {
-			is := &IS{
-				wbrc:       wbrc,
-				httpClient: &http.Client{Timeout: timeout, CheckRedirect: noRedirect},
-				torClient:  torClient,
-				submitid:   "",
-			}
 			mu.Lock()
+			is.submitid = ""
 			is.search(link, ch)
 			results[link] = strings.Replace(<-ch, onion, "archive.today", 1)
 			mu.Unlock()
@@ -195,6 +204,15 @@ func (is *IS) archive(uri string, ch chan<- string) {
 		return
 	}
 
+	// When use anyway parameter.
+	refresh := resp.Header.Get("Refresh")
+	if len(refresh) > 0 {
+		r := strings.Split(refresh, ";url=")
+		if len(r) == 2 {
+			ch <- r[1]
+			return
+		}
+	}
 	loc := resp.Header.Get("location")
 	if len(loc) > 2 {
 		ch <- loc
@@ -205,15 +223,6 @@ func (is *IS) archive(uri string, ch chan<- string) {
 	if len(final) > 0 && strings.Contains(final, "/submit/") == false {
 		ch <- final
 		return
-	}
-	// When use anyway parameter.
-	refresh := resp.Header.Get("refresh")
-	if len(refresh) > 0 {
-		r := strings.Split(refresh, ";url=")
-		if len(r) == 2 {
-			ch <- r[1]
-			return
-		}
 	}
 
 	ch <- fmt.Sprintf("%s/timegate/%s", domain, uri)
