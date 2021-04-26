@@ -54,18 +54,14 @@ func newTorClient(done <-chan bool) (*http.Client, error) {
 		}
 
 		go func() {
-			// Auto close tor client after 10 min
-			tick := time.NewTicker(10 * time.Minute)
 			for {
 				select {
 				case <-done:
 					logger.Debug("Closed tor client")
-					tick.Stop()
 					t.Close()
 					return
-				case <-tick.C:
+				case <-time.After(10 * time.Minute):
 					logger.Debug("Closed tor client, timeout")
-					tick.Stop()
 					t.Close()
 					return
 				default:

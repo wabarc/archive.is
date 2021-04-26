@@ -103,7 +103,9 @@ func (wbrc *Archiver) Wayback(links []string) (map[string]string, error) {
 	wg.Wait()
 
 	// Close tor connection
-	done <- true
+	defer func() {
+		done <- true
+	}()
 
 	if len(results) == 0 {
 		return results, fmt.Errorf("No results")
@@ -153,6 +155,11 @@ func (wbrc *Archiver) Playback(links []string) (map[string]string, error) {
 		}(link)
 	}
 	wg.Wait()
+
+	// Close tor connection
+	defer func() {
+		done <- true
+	}()
 
 	if len(results) == 0 {
 		return results, fmt.Errorf("No results")
