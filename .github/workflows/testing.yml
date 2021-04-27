@@ -33,6 +33,9 @@ jobs:
       with:
         go-version: ${{ matrix.go }}
 
+    - name: Set up Tor
+      uses: tor-actions/setup-tor@main
+
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
       with:
@@ -42,7 +45,18 @@ jobs:
       run: |
         go get -v -t -d ./...
 
-    - name: Run test
+    - name: Run test with Tor standalone
+      run: |
+        make test
+        make test-cover
+
+    - name: Set up Tor
+      uses: tor-actions/setup-tor@main
+      with:
+        daemon: true
+        port: 9050
+
+    - name: Run test with Tor daemon
       run: |
         make test
         make test-cover
