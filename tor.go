@@ -16,13 +16,14 @@ import (
 	"golang.org/x/net/proxy"
 )
 
-func newTorClient(done <-chan bool) (*http.Client, error) {
+func newTorClient(ctx context.Context) (client *http.Client, t *tor.Tor, err error) {
 	var dialer proxy.ContextDialer
-	if useProxy() {
+	addr, isUseProxy := useProxy()
+	if isUseProxy {
 		// Create a socks5 dialer
-		pxy, err := proxy.SOCKS5("tcp", "127.0.0.1:9050", nil, proxy.Direct)
+		pxy, err := proxy.SOCKS5("tcp", addr, nil, proxy.Direct)
 		if err != nil {
-			return nil, fmt.Errorf("Can't connect to the proxy: %w", err)
+			return nil, t, fmt.Errorf("Can't connect to the proxy: %w", err)
 		}
 
 		dialer = pxy.(interface {
@@ -31,44 +32,30 @@ func newTorClient(done <-chan bool) (*http.Client, error) {
 	} else {
 		// Lookup tor executable file
 		if _, err := exec.LookPath("tor"); err != nil {
-			return nil, fmt.Errorf("%w", err)
+			return nil, t, fmt.Errorf("%w", err)
 		}
 
 		// Start tor with default config
-		startConf := &tor.StartConf{TempDataDirBase: os.TempDir()}
-		t, err := tor.Start(nil, startConf)
+		startConf := &tor.StartConf{TempDataDirBase: os.TempDir(), RetainTempDataDir: false, NoHush: false}
+		t, err = tor.Start(nil, startConf)
 		if err != nil {
-			return nil, fmt.Errorf("Make connection failed: %w", err)
+			return nil, t, fmt.Errorf("Make connection failed: %w", err)
 		}
 		// defer t.Close()
+		t.DeleteDataDirOnClose = true
+		t.StopProcessOnClose = true
 
 		// Wait at most a minute to start network and get
-		dialCtx, dialCancel := context.WithTimeout(context.Background(), time.Minute)
+		dialCtx, dialCancel := context.WithTimeout(ctx, time.Minute)
 		defer dialCancel()
+		// t.ProcessCancelFunc = dialCancel
 
 		// Make connection
 		dialer, err = t.Dialer(dialCtx, nil)
 		if err != nil {
 			t.Close()
-			return nil, fmt.Errorf("Make connection failed: %w", err)
+			return nil, t, fmt.Errorf("Make connection failed: %w", err)
 		}
-
-		go func() {
-			for {
-				select {
-				case <-done:
-					logger.Debug("Closed tor client")
-					t.Close()
-					return
-				case <-time.After(10 * time.Minute):
-					logger.Debug("Closed tor client, timeout")
-					t.Close()
-					return
-				default:
-					logger.Debug("Waiting for close tor client")
-				}
-			}
-		}()
 	}
 
 	return &http.Client{
@@ -86,10 +73,17 @@ func newTorClient(done <-chan bool) (*http.Client, error) {
 				InsecureSkipVerify: true,
 			},
 		},
-	}, nil
+	}, t, nil
 }
 
-func useProxy() bool {
+func closeTor(t *tor.Tor) error {
+	if t != nil {
+		t.Close()
+	}
+	return nil
+}
+
+func useProxy() (addr string, ok bool) {
 	host := os.Getenv("TOR_HOST")
 	port := os.Getenv("TOR_SOCKS_PORT")
 	if host == "" {
@@ -99,16 +93,17 @@ func useProxy() bool {
 		port = "9050"
 	}
 
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), time.Second)
+	addr = net.JoinHostPort(host, port)
+	conn, err := net.DialTimeout("tcp", addr, time.Second)
 	if err != nil {
 		logger.Debug("Try to connect tor proxy failed: %v", err)
-		return false
+		return addr, false
 	}
 	if conn != nil {
 		conn.Close()
-		logger.Debug("Connected: %v", net.JoinHostPort(host, port))
-		return true
+		logger.Debug("Connected: %v", addr)
+		return addr, true
 	}
 
-	return false
+	return addr, false
 }

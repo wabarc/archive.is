@@ -32,7 +32,6 @@ type IS struct {
 
 	submitid string
 
-	endpoint   *url.URL
 	httpClient *http.Client
 	torClient  *http.Client
 }
@@ -65,15 +64,18 @@ func init() {
 func (wbrc *Archiver) Wayback(links []string) (map[string]string, error) {
 	collects, results := make(map[string]string), make(map[string]string)
 	for _, link := range links {
-		if !helper.IsURL(link) {
-			logger.Info(link + " is invalid url.")
-			continue
+		if helper.IsURL(link) {
+			collects[link] = link
 		}
-		collects[link] = link
+	}
+	if len(collects) == 0 {
+		return results, fmt.Errorf("Not found")
 	}
 
-	done := make(chan bool, 1)
-	torClient, err := newTorClient(done)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	torClient, t, err := newTorClient(ctx)
+	defer closeTor(t)
 	if err != nil {
 		logger.Error("%v", err)
 	}
@@ -102,11 +104,6 @@ func (wbrc *Archiver) Wayback(links []string) (map[string]string, error) {
 	}
 	wg.Wait()
 
-	// Close tor connection
-	defer func() {
-		done <- true
-	}()
-
 	if len(results) == 0 {
 		return results, fmt.Errorf("No results")
 	}
@@ -123,11 +120,13 @@ func (wbrc *Archiver) Playback(links []string) (map[string]string, error) {
 		}
 	}
 	if len(collects) == 0 {
-		return results, fmt.Errorf("No found URL")
+		return results, fmt.Errorf("Not found")
 	}
 
-	done := make(chan bool, 1)
-	torClient, err := newTorClient(done)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	torClient, t, err := newTorClient(ctx)
+	defer closeTor(t)
 	if err != nil {
 		logger.Error("%v", err)
 	}
@@ -156,11 +155,6 @@ func (wbrc *Archiver) Playback(links []string) (map[string]string, error) {
 	}
 	wg.Wait()
 
-	// Close tor connection
-	defer func() {
-		done <- true
-	}()
-
 	if len(results) == 0 {
 		return results, fmt.Errorf("No results")
 	}
@@ -168,7 +162,7 @@ func (wbrc *Archiver) Playback(links []string) (map[string]string, error) {
 	return results, nil
 }
 func (is *IS) archive(uri string, ch chan<- string) {
-	_, err := is.getValidDomain()
+	endpoint, err := is.getValidDomain()
 	if err != nil {
 		ch <- fmt.Sprint("archive.today is unavailable.")
 		return
@@ -182,14 +176,14 @@ func (is *IS) archive(uri string, ch chan<- string) {
 		"anyway":   {anyway},
 		"url":      {uri},
 	}
-	domain := is.endpoint.String()
+	domain := endpoint.String()
 	req, err := http.NewRequest("POST", domain+"/submit/", strings.NewReader(data.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
 	req.Header.Add("User-Agent", userAgent)
 	req.Header.Add("Referer", domain)
 	req.Header.Add("Origin", domain)
-	req.Header.Add("Host", is.endpoint.Hostname())
+	req.Header.Add("Host", endpoint.Hostname())
 	req.Header.Add("Cookie", is.getCookie())
 	resp, err := is.httpClient.Do(req)
 	if err != nil {
@@ -286,6 +280,7 @@ func (is *IS) getSubmitID(url string) (string, error) {
 }
 
 func (is *IS) getValidDomain() (*url.URL, error) {
+	var endpoint *url.URL
 	// get valid domain and submitid
 	r := func(domains []string) {
 		for _, domain := range domains {
@@ -294,8 +289,8 @@ func (is *IS) getValidDomain() (*url.URL, error) {
 			if err != nil {
 				continue
 			}
-			is.endpoint, _ = url.Parse(h)
 			is.submitid = id
+			endpoint, _ = url.Parse(h)
 			break
 		}
 	}
@@ -307,28 +302,28 @@ func (is *IS) getValidDomain() (*url.URL, error) {
 		r([]string{onion})
 	}
 
-	if is.endpoint == nil || is.submitid == "" {
+	if endpoint == nil || is.submitid == "" {
 		r(domains)
-		if is.endpoint == nil || is.submitid == "" {
+		if endpoint == nil || is.submitid == "" {
 			return nil, fmt.Errorf("archive.today is unavailable.")
 		}
 	}
 
-	return is.endpoint, nil
+	return endpoint, nil
 }
 
 func (is *IS) search(uri string, ch chan<- string) {
-	_, err := is.getValidDomain()
+	endpoint, err := is.getValidDomain()
 	if err != nil {
 		ch <- fmt.Sprint("archive.today is unavailable.")
 		return
 	}
 
-	domain := is.endpoint.String()
+	domain := endpoint.String()
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/%s", domain, uri), nil)
 	req.Header.Add("User-Agent", userAgent)
 	req.Header.Add("Referer", domain)
-	req.Header.Add("Host", is.endpoint.Hostname())
+	req.Header.Add("Host", endpoint.Hostname())
 	resp, err := is.httpClient.Do(req)
 	if err != nil {
 		ch <- fmt.Sprint(err)
@@ -344,7 +339,7 @@ func (is *IS) search(uri string, ch chan<- string) {
 
 	target, exists := doc.Find("#row0 > .TEXT-BLOCK > a").Attr("href")
 	if !exists {
-		ch <- "No found"
+		ch <- "Not found"
 		return
 	}
 
