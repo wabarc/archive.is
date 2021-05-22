@@ -40,7 +40,7 @@ var (
 	userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36"
 	anyway    = "0"
 	scheme    = "http"
-	onion     = "archivecaslytosk.onion" // archiveiya74codqgiixo33q62qlrqtkgmcitqx5u2oeqnmn5bpcbiyd.onion
+	onion     = "archiveiya74codqgiixo33q62qlrqtkgmcitqx5u2oeqnmn5bpcbiyd.onion" // archivecaslytosk.onion
 	cookie    = ""
 	timeout   = 120 * time.Second
 	domains   = []string{
