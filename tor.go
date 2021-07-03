@@ -37,7 +37,7 @@ func newTorClient(ctx context.Context) (client *http.Client, t *tor.Tor, err err
 
 		// Start tor with default config
 		startConf := &tor.StartConf{TempDataDirBase: os.TempDir(), RetainTempDataDir: false, NoHush: false}
-		t, err = tor.Start(nil, startConf)
+		t, err = tor.Start(context.TODO(), startConf)
 		if err != nil {
 			return nil, t, fmt.Errorf("Make connection failed: %w", err)
 		}
@@ -59,7 +59,6 @@ func newTorClient(ctx context.Context) (client *http.Client, t *tor.Tor, err err
 	}
 
 	return &http.Client{
-		Timeout:       timeout,
 		CheckRedirect: noRedirect,
 		Transport: &http.Transport{
 			Proxy:                 http.ProxyFromEnvironment,

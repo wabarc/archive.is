@@ -11,11 +11,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/wabarc/helper"
 	"github.com/wabarc/logger"
 )
 
@@ -42,7 +39,6 @@ var (
 	scheme    = "http"
 	onion     = "archiveiya74codqgiixo33q62qlrqtkgmcitqx5u2oeqnmn5bpcbiyd.onion" // archivecaslytosk.onion
 	cookie    = ""
-	timeout   = 120 * time.Second
 	domains   = []string{
 		"archive.today",
 		"archive.is",
@@ -62,123 +58,67 @@ func init() {
 }
 
 // Wayback is the handle of saving webpages to archive.is
-func (wbrc *Archiver) Wayback(links []string) (map[string]string, error) {
-	collects, results := make(map[string]string), make(map[string]string)
-	for _, link := range links {
-		if helper.IsURL(link) {
-			collects[link] = link
-		}
-	}
-	if len(collects) == 0 {
-		return results, fmt.Errorf("Not found")
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func (wbrc *Archiver) Wayback(ctx context.Context, in *url.URL) (dst string, err error) {
 	torClient, t, err := newTorClient(ctx)
-	defer closeTor(t)
+	defer closeTor(t) // nolint:errcheck
 	if err != nil {
 		logger.Error("%v", err)
 	}
 
 	is := &IS{
 		wbrc:       wbrc,
-		httpClient: &http.Client{Timeout: timeout, CheckRedirect: noRedirect},
+		httpClient: &http.Client{CheckRedirect: noRedirect},
 		torClient:  torClient,
 	}
 
-	ch := make(chan string, len(collects))
-	defer close(ch)
-
-	var mu sync.Mutex
-	var wg sync.WaitGroup
-	for _, link := range collects {
-		wg.Add(1)
-		go func(link string) {
-			mu.Lock()
-			is.submitid = ""
-			is.archive(link, ch)
-			results[link] = strings.Replace(<-ch, onion, "archive.today", 1)
-			mu.Unlock()
-			wg.Done()
-		}(link)
+	dst, err = is.archive(ctx, in)
+	if err != nil {
+		return
 	}
-	wg.Wait()
+	dst = strings.Replace(dst, onion, "archive.today", 1)
 
-	if len(results) == 0 {
-		return results, fmt.Errorf("No results")
-	}
-
-	return results, nil
+	return
 }
 
 // Playback handle searching archived webpages from archive.is
-func (wbrc *Archiver) Playback(links []string) (map[string]string, error) {
-	collects, results := make(map[string]string), make(map[string]string)
-	for _, link := range links {
-		if helper.IsURL(link) {
-			collects[link] = link
-		}
-	}
-	if len(collects) == 0 {
-		return results, fmt.Errorf("Not found")
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func (wbrc *Archiver) Playback(ctx context.Context, in *url.URL) (dst string, err error) {
 	torClient, t, err := newTorClient(ctx)
-	defer closeTor(t)
+	defer closeTor(t) // nolint:errcheck
 	if err != nil {
 		logger.Error("%v", err)
 	}
 
 	is := &IS{
 		wbrc:       wbrc,
-		httpClient: &http.Client{Timeout: timeout, CheckRedirect: noRedirect},
+		httpClient: &http.Client{CheckRedirect: noRedirect},
 		torClient:  torClient,
 	}
 
-	ch := make(chan string, len(collects))
-	defer close(ch)
-
-	var mu sync.Mutex
-	var wg sync.WaitGroup
-	for _, link := range collects {
-		wg.Add(1)
-		go func(link string) {
-			mu.Lock()
-			is.submitid = ""
-			is.search(link, ch)
-			results[link] = strings.Replace(<-ch, onion, "archive.today", 1)
-			mu.Unlock()
-			wg.Done()
-		}(link)
+	dst, err = is.search(ctx, in)
+	if err != nil {
+		return
 	}
-	wg.Wait()
+	dst = strings.Replace(dst, onion, "archive.today", 1)
 
-	if len(results) == 0 {
-		return results, fmt.Errorf("No results")
-	}
-
-	return results, nil
+	return
 }
-func (is *IS) archive(uri string, ch chan<- string) {
+func (is *IS) archive(ctx context.Context, u *url.URL) (string, error) {
 	endpoint, err := is.getValidDomain()
 	if err != nil {
-		ch <- fmt.Sprint("archive.today is unavailable.")
-		return
+		return "", fmt.Errorf("archive.today is unavailable.")
 	}
 
 	if is.wbrc.Anyway != "" {
 		anyway = is.wbrc.Anyway
 	}
+	uri := u.String()
 	data := url.Values{
 		"submitid": {is.submitid},
 		"anyway":   {anyway},
 		"url":      {uri},
 	}
 	domain := endpoint.String()
-	req, err := http.NewRequest("POST", domain+"/submit/", strings.NewReader(data.Encode()))
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, domain+"/submit/", strings.NewReader(data.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
 	req.Header.Add("User-Agent", userAgent)
@@ -188,22 +128,19 @@ func (is *IS) archive(uri string, ch chan<- string) {
 	req.Header.Add("Cookie", is.getCookie())
 	resp, err := is.httpClient.Do(req)
 	if err != nil {
-		ch <- fmt.Sprint(err)
-		return
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	code := resp.StatusCode / 100
 	if code == 1 || code == 4 || code == 5 {
 		final := fmt.Sprintf("%s?url=%s", domain, uri)
-		ch <- final
-		return
+		return final, nil
 	}
 
 	_, err = io.Copy(ioutil.Discard, resp.Body)
 	if err != nil {
-		ch <- fmt.Sprint(err)
-		return
+		return "", err
 	}
 
 	// When use anyway parameter.
@@ -211,23 +148,20 @@ func (is *IS) archive(uri string, ch chan<- string) {
 	if len(refresh) > 0 {
 		r := strings.Split(refresh, ";url=")
 		if len(r) == 2 {
-			ch <- r[1]
-			return
+			return r[1], nil
 		}
 	}
 	loc := resp.Header.Get("location")
 	if len(loc) > 2 {
-		ch <- loc
-		return
+		return loc, nil
 	}
 	// Redirect to final url if page saved.
 	final := resp.Request.URL.String()
-	if len(final) > 0 && strings.Contains(final, "/submit/") == false {
-		ch <- final
-		return
+	if len(final) > 0 && !strings.Contains(final, "/submit/") {
+		return final, nil
 	}
 
-	ch <- fmt.Sprintf("%s/timegate/%s", domain, uri)
+	return fmt.Sprintf("%s/timegate/%s", domain, uri), nil
 }
 
 func noRedirect(req *http.Request, via []*http.Request) error {
@@ -248,12 +182,12 @@ func (is *IS) getCookie() string {
 }
 
 func (is *IS) getSubmitID(url string) (string, error) {
-	if strings.Contains(url, "http") == false {
+	if !strings.Contains(url, "http") {
 		return "", fmt.Errorf("missing protocol scheme")
 	}
 
 	r := strings.NewReader("")
-	req, err := http.NewRequest("GET", url, r)
+	req, _ := http.NewRequest("GET", url, r)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("User-Agent", userAgent)
 	req.Header.Add("Cookie", is.getCookie())
@@ -313,36 +247,36 @@ func (is *IS) getValidDomain() (*url.URL, error) {
 	return endpoint, nil
 }
 
-func (is *IS) search(uri string, ch chan<- string) {
+func (is *IS) search(ctx context.Context, in *url.URL) (string, error) {
 	endpoint, err := is.getValidDomain()
 	if err != nil {
-		ch <- fmt.Sprint("archive.today is unavailable.")
-		return
+		return "", fmt.Errorf("archive.today is unavailable.")
 	}
 
+	uri := in.String()
 	domain := endpoint.String()
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/%s", domain, uri), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/%s", domain, uri), nil)
+	if err != nil {
+		return "", err
+	}
 	req.Header.Add("User-Agent", userAgent)
 	req.Header.Add("Referer", domain)
 	req.Header.Add("Host", endpoint.Hostname())
 	resp, err := is.httpClient.Do(req)
 	if err != nil {
-		ch <- fmt.Sprint(err)
-		return
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
-		ch <- fmt.Sprint(err)
-		return
+		return "", err
 	}
 
 	target, exists := doc.Find("#row0 > .TEXT-BLOCK > a").Attr("href")
 	if !exists {
-		ch <- "Not found"
-		return
+		return "", fmt.Errorf("Not found")
 	}
 
-	ch <- target
+	return target, nil
 }
