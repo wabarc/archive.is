@@ -92,7 +92,7 @@ jobs:
       run: make TARGET=${{ steps.builder.outputs.args }} releases
 
     - name: Upload archived binary
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: archive-is
         path: build/package/archive.is*
