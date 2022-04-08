@@ -105,7 +105,7 @@ jobs:
       digest: ${{ steps.digest.outputs.result }}
     steps:
     - name: Download math result from build job
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: archive-is
         path: .
@@ -124,7 +124,7 @@ jobs:
     needs: [build, checksum]
     steps:
     - name: Download math result from build and checksum jobs
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: archive-is
         path: archive-is # Put files to archive.is directory
