@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -76,6 +77,7 @@ func (wbrc *Archiver) Wayback(ctx context.Context, in *url.URL) (dst string, err
 		return
 	}
 	dst = strings.Replace(dst, onion, "archive.today", 1)
+	dst = regexp.MustCompile(`\/again\?url=.*`).ReplaceAllString(dst, "")
 
 	return
 }
