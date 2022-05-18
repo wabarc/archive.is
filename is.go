@@ -40,13 +40,13 @@ var (
 	onion     = "archiveiya74codqgiixo33q62qlrqtkgmcitqx5u2oeqnmn5bpcbiyd.onion" // archivecaslytosk.onion
 	cookie    = ""
 	domains   = []string{
+		"archive.ph",
 		"archive.today",
 		"archive.is",
 		"archive.li",
 		"archive.vn",
 		"archive.fo",
 		"archive.md",
-		"archive.ph",
 	}
 )
 
