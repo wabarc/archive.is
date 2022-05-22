@@ -37,17 +37,16 @@ type IS struct {
 var (
 	userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36"
 	anyway    = "0"
-	scheme    = "http"
-	onion     = "archiveiya74codqgiixo33q62qlrqtkgmcitqx5u2oeqnmn5bpcbiyd.onion" // archivecaslytosk.onion
+	onion     = "http://archiveiya74codqgiixo33q62qlrqtkgmcitqx5u2oeqnmn5bpcbiyd.onion" // archivecaslytosk.onion
 	cookie    = ""
 	domains   = []string{
-		"archive.ph",
-		"archive.today",
-		"archive.is",
-		"archive.li",
-		"archive.vn",
-		"archive.fo",
-		"archive.md",
+		"https://archive.ph",
+		"https://archive.today",
+		"https://archive.is",
+		"https://archive.li",
+		"https://archive.vn",
+		"https://archive.fo",
+		"https://archive.md",
 	}
 )
 
@@ -76,7 +75,7 @@ func (wbrc *Archiver) Wayback(ctx context.Context, in *url.URL) (dst string, err
 	if err != nil {
 		return
 	}
-	dst = strings.Replace(dst, onion, "archive.today", 1)
+	dst = strings.Replace(dst, onion, "https://archive.today", 1)
 	dst = regexp.MustCompile(`\/again\?url=.*`).ReplaceAllString(dst, "")
 
 	return
@@ -100,7 +99,7 @@ func (wbrc *Archiver) Playback(ctx context.Context, in *url.URL) (dst string, er
 	if err != nil {
 		return
 	}
-	dst = strings.Replace(dst, onion, "archive.today", 1)
+	dst = strings.Replace(dst, onion, "https://archive.today", 1)
 
 	return
 }
@@ -184,10 +183,6 @@ func (is *IS) getCookie() string {
 }
 
 func (is *IS) getSubmitID(url string) (string, error) {
-	if !strings.Contains(url, "http") {
-		return "", fmt.Errorf("missing protocol scheme")
-	}
-
 	r := strings.NewReader("")
 	req, _ := http.NewRequest("GET", url, r)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -221,13 +216,12 @@ func (is *IS) getValidDomain() (*url.URL, error) {
 	// get valid domain and submitid
 	r := func(domains []string) {
 		for _, domain := range domains {
-			h := fmt.Sprintf("%v://%v", scheme, domain)
-			id, err := is.getSubmitID(h)
+			id, err := is.getSubmitID(domain)
 			if err != nil {
 				continue
 			}
 			is.submitid = id
-			endpoint, _ = url.Parse(h)
+			endpoint, _ = url.Parse(domain)
 			break
 		}
 	}
