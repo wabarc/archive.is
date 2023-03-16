@@ -7,20 +7,20 @@ This package is a command-line tool named `archive.is` saving webpage to [archiv
 From source (^Go 1.12):
 
 ```sh
-$ go get github.com/wabarc/archive.is
+go get github.com/wabarc/archive.is
 ```
 
 From [gobinaries.com](https://gobinaries.com):
 
 ```sh
-$ curl -sf https://gobinaries.com/wabarc/archive.is/cmd/archive.is | sh
+curl -sf https://gobinaries.com/wabarc/archive.is/cmd/archive.is | sh
 ```
 
 From [releases](https://github.com/wabarc/archive.is/releases)
 
 ## Usage
 
-#### Command-line
+### Command-line
 
 ```sh
 $ archive.is https://www.google.com https://www.bbc.com
@@ -33,7 +33,7 @@ https://www.google.com => https://archive.li/JYVMT
 https://www.bbc.com => https://archive.li/HjqQV
 ```
 
-#### Go package interfaces
+### Go package interfaces
 
 ```go
 package main
@@ -60,10 +60,10 @@ func main() {
 
 ### Access Tor Hidden Service
 
-[archive.today](https://archive.today) providing [Tor Hidden Service](http://archivecaslytosk.onion/) to saving webpage, and it's preferred to access 
+[archive.today](https://archive.today) providing [Tor Hidden Service](http://archivecaslytosk.onion/) to saving webpage, and it's preferred to access
 Tor Hidden Service, access <http://archive.today> if Tor Hidden Service is unavailable.
 
-By default, the program will dial a proxy using tor socks port `127.0.0.1:9050`, 
+By default, the program will dial a proxy using tor socks port `127.0.0.1:9050`,
 use `TOR_HOST` and `TOR_SOCKS_PORT` specified a different host and port
 
 It'll look up tor executable file if dial socks proxy failed, and start it to dial proxy.
