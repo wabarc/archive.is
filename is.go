@@ -2,6 +2,7 @@ package is
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,6 +13,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/wabarc/logger"
@@ -65,9 +67,24 @@ func (wbrc *Archiver) Wayback(ctx context.Context, in *url.URL) (dst string, err
 		logger.Error("%v", err)
 	}
 
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			},
+			PreferServerCipherSuites: true,
+			// InsecureSkipVerify:       true, // nosemgrep: insecure-transport.go-stdlib.bypass-tls-verification.bypass-tls-verification
+			MinVersion: tls.VersionTLS13,
+		},
+	}
+	client := &http.Client{
+		// CheckRedirect: noRedirect,
+		Transport: transport,
+		Timeout:   30 * time.Second,
+	}
 	is := &IS{
 		wbrc:       wbrc,
-		httpClient: &http.Client{CheckRedirect: noRedirect},
+		httpClient: client,
 		torClient:  torClient,
 	}
 
