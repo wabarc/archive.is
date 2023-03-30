@@ -41,13 +41,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	wbrc := &is.Archiver{}
+	arc := is.NewArchiver(nil)
+	defer arc.CloseTor() // nolint:errcheck
+
 	if playback {
-		process(wbrc.Playback, args)
+		process(arc.Playback, args)
 		os.Exit(0)
 	}
 
-	process(wbrc.Wayback, args)
+	process(arc.Wayback, args)
 }
 
 func process(f func(context.Context, *url.URL) (string, error), args []string) {
