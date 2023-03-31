@@ -83,11 +83,10 @@ func NewArchiver(client *http.Client) *Archiver {
 }
 
 // CloseTor closes the Tor client if it exists.
-func (arc *Archiver) CloseTor() error {
+func (arc *Archiver) CloseTor() {
 	if arc.tor != nil {
-		return closeTor(arc.tor)
+		_ = closeTor(arc.tor)
 	}
-	return nil
 }
 
 // Do implements the http.Do method to execute an HTTP request using the embedded HTTP
