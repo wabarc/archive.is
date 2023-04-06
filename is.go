@@ -21,7 +21,7 @@ import (
 const timeout = 30 * time.Second
 
 var (
-	userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36"
+	userAgent = "Mozilla/5.0 (Windows NT 10.0; rv:102.0) Gecko/20100101 Firefox/102.0"
 	onion     = "http://archiveiya74codqgiixo33q62qlrqtkgmcitqx5u2oeqnmn5bpcbiyd.onion" // archivecaslytosk.onion
 	domains   = []string{
 		"https://archive.ph",
