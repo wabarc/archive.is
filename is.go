@@ -64,9 +64,8 @@ func init() {
 func NewArchiver(client *http.Client) *Archiver {
 	arc := &Archiver{anyway: "1"}
 	if client == nil {
-		client = &http.Client{}
+		client = &http.Client{Timeout: timeout}
 	}
-	client.Timeout = timeout
 	// client.CheckRedirect = noRedirect
 	arc.Client = client
 
