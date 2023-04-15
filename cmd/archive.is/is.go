@@ -42,7 +42,7 @@ func main() {
 	}
 
 	arc := is.NewArchiver(nil)
-	defer arc.CloseTor() // nolint:errcheck
+	defer arc.CloseTor()
 
 	if playback {
 		process(arc.Playback, args)
