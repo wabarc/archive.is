@@ -83,7 +83,7 @@ func newTorClient(ctx context.Context) (client *http.Client, t *tor.Tor, err err
 
 func closeTor(t *tor.Tor) error {
 	if t != nil {
-		t.Close()
+		return t.Close()
 	}
 	return nil
 }
