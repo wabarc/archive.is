@@ -179,10 +179,15 @@ func (arc *Archiver) archive(ctx context.Context, is *IS, u *url.URL) (string, e
 			return r[1], nil
 		}
 	}
+
 	loc := resp.Header.Get("location")
 	if len(loc) > 2 {
-		return loc, nil
+		u, err := url.Parse(loc)
+		if err == nil && strings.HasPrefix("archive", u.Hostname()) {
+			return loc, nil
+		}
 	}
+
 	// Redirect to final url if page saved.
 	final := resp.Request.URL.String()
 	if len(final) > 0 && !strings.Contains(final, "/submit/") {
