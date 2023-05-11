@@ -4,23 +4,29 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/wabarc/archive.is"
+	"github.com/wabarc/proxier"
 )
 
 func main() {
 	var (
+		proxy string
+
 		playback bool
 		version  bool
 	)
 
+	const proxyHelp = "Proxy server, e.g. socks5://127.0.0.1:1080"
 	const playbackHelp = "Search archived URL"
 	const versionHelp = "Show version"
 
+	flag.StringVar(&proxy, "proxy", "", proxyHelp)
 	flag.BoolVar(&playback, "playback", false, playbackHelp)
 	flag.BoolVar(&playback, "p", false, playbackHelp)
 	flag.BoolVar(&version, "version", false, versionHelp)
@@ -41,7 +47,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	arc := is.NewArchiver(nil)
+	client := &http.Client{}
+	if proxy != "" {
+		rt, err := proxier.NewUTLSRoundTripper(proxier.Proxy(proxy))
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+		client.Transport = rt
+	}
+
+	arc := is.NewArchiver(client)
 	defer arc.CloseTor()
 
 	if playback {

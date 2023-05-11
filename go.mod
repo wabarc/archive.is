@@ -9,7 +9,7 @@ require (
 	github.com/mattn/go-isatty v0.0.18 // indirect
 	github.com/wabarc/helper v0.0.0-20230318095659-969de9ddf4b6
 	github.com/wabarc/logger v0.0.0-20210730133522-86bd3f31e792
-	golang.org/x/crypto v0.7.0 // indirect
-	golang.org/x/net v0.8.0
+	github.com/wabarc/proxier v0.0.0-20230511195435-7708d87fe2e5
+	golang.org/x/net v0.10.0
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 )
