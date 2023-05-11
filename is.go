@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -166,7 +165,7 @@ func (arc *Archiver) archive(ctx context.Context, is *IS, u *url.URL) (string, e
 		return final, nil
 	}
 
-	_, err = io.Copy(ioutil.Discard, resp.Body)
+	_, err = io.Copy(io.Discard, resp.Body)
 	if err != nil {
 		return "", err
 	}
