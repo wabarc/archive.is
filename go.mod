@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/cretz/bine v0.2.0
-	github.com/wabarc/helper v0.0.0-20230318095659-969de9ddf4b6
+	github.com/wabarc/helper v0.0.0-20230418130954-be7440352bcb
 	github.com/wabarc/logger v0.0.0-20210730133522-86bd3f31e792
 	github.com/wabarc/proxier v0.0.0-20230610135141-b55fe1536465
 	golang.org/x/net v0.10.0
