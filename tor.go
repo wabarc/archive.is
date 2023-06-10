@@ -75,7 +75,8 @@ func newTorClient(ctx context.Context) (client *http.Client, t *tor.Tor, err err
 			ExpectContinueTimeout: 1 * time.Second,
 			MaxIdleConnsPerHost:   runtime.GOMAXPROCS(0) + 1,
 			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
+				InsecureSkipVerify: false,
+				MinVersion:         tls.VersionTLS12,
 			},
 		},
 	}, t, nil
