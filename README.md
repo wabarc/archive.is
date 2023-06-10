@@ -46,8 +46,8 @@ import (
 
 func main() {
         links := []string{"https://www.google.com", "https://www.bbc.com"}
-        wbrc := &is.Archiver{}
-        got, _ := wbrc.Wayback(links)
+        arc := &is.Archiver{}
+        got, _ := arc.Wayback(links)
         for orig, dest := range got {
                 fmt.Println(orig, "=>", dest)
         }

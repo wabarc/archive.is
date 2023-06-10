@@ -29,7 +29,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest, macos-latest, windows-latest ]
-        go: [ "1.17", "1.18", "1.19", "1.20" ]
+        go: [ "1.19", "1.20" ]
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@1f99358870fe1c846a3ccba386cc2b2246836776 # v2.2.1
@@ -42,9 +42,6 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
 
-      - name: Set up Tor
-        uses: tor-actions/setup-tor@main
-
       - name: Check out code into the Go module directory
         uses: actions/checkout@24cb9080177205b6e8c946b17badbe402adc938f # v3.4.0
         with:
@@ -55,13 +52,21 @@ jobs:
         run: |
           go get -v -t -d ./...
 
+      - name: Run test without Tor
+        run: |
+          make test
+          make test-cover
+
+      - name: Set up Tor
+        uses: tor-actions/setup-tor@462b4eef22eecc86cc4abdedafc95a38667e2557
+
       - name: Run test with Tor standalone
         run: |
           make test
           make test-cover
 
       - name: Set up Tor
-        uses: tor-actions/setup-tor@main
+        uses: tor-actions/setup-tor@462b4eef22eecc86cc4abdedafc95a38667e2557
         with:
           daemon: true
           port: 9050

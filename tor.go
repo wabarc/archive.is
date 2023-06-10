@@ -36,8 +36,13 @@ func newTorClient(ctx context.Context) (client *http.Client, t *tor.Tor, err err
 		}
 
 		// Start tor with default config
-		startConf := &tor.StartConf{TempDataDirBase: os.TempDir(), RetainTempDataDir: false, NoHush: false}
-		t, err = tor.Start(context.TODO(), startConf)
+		startConf := &tor.StartConf{
+			TempDataDirBase:   os.TempDir(),
+			RetainTempDataDir: false,
+			EnableNetwork:     true,
+			NoHush:            false,
+		}
+		t, err = tor.Start(ctx, startConf)
 		if err != nil {
 			return nil, t, fmt.Errorf("Make connection failed: %w", err)
 		}
@@ -48,7 +53,7 @@ func newTorClient(ctx context.Context) (client *http.Client, t *tor.Tor, err err
 		// Wait at most a minute to start network and get
 		dialCtx, dialCancel := context.WithTimeout(ctx, time.Minute)
 		defer dialCancel()
-		// t.ProcessCancelFunc = dialCancel
+		t.ProcessCancelFunc = dialCancel
 
 		// Make connection
 		dialer, err = t.Dialer(dialCtx, nil)
@@ -59,6 +64,7 @@ func newTorClient(ctx context.Context) (client *http.Client, t *tor.Tor, err err
 	}
 
 	return &http.Client{
+		Timeout:       timeout,
 		CheckRedirect: noRedirect,
 		Transport: &http.Transport{
 			Proxy:                 http.ProxyFromEnvironment,
@@ -77,7 +83,7 @@ func newTorClient(ctx context.Context) (client *http.Client, t *tor.Tor, err err
 
 func closeTor(t *tor.Tor) error {
 	if t != nil {
-		t.Close()
+		return t.Close()
 	}
 	return nil
 }
