@@ -7,7 +7,7 @@ require (
 	github.com/cretz/bine v0.2.0
 	github.com/wabarc/helper v0.0.0-20230318095659-969de9ddf4b6
 	github.com/wabarc/logger v0.0.0-20210730133522-86bd3f31e792
-	github.com/wabarc/proxier v0.0.0-20230511195500-477b79d84aff
+	github.com/wabarc/proxier v0.0.0-20230610135141-b55fe1536465
 	golang.org/x/net v0.10.0
 )
 
