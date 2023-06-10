@@ -58,7 +58,7 @@ jobs:
           make test-cover
 
       - name: Set up Tor
-        uses: tor-actions/setup-tor@main
+        uses: tor-actions/setup-tor@462b4eef22eecc86cc4abdedafc95a38667e2557
 
       - name: Run test with Tor standalone
         run: |
@@ -66,7 +66,7 @@ jobs:
           make test-cover
 
       - name: Set up Tor
-        uses: tor-actions/setup-tor@main
+        uses: tor-actions/setup-tor@462b4eef22eecc86cc4abdedafc95a38667e2557
         with:
           daemon: true
           port: 9050
