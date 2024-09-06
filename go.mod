@@ -1,9 +1,11 @@
 module github.com/wabarc/archive.is
 
-go 1.20
+go 1.23
+
+toolchain go1.23.1
 
 require (
-	github.com/PuerkitoBio/goquery v1.9.2
+	github.com/PuerkitoBio/goquery v1.10.0
 	github.com/cretz/bine v0.2.0
 	github.com/wabarc/helper v0.0.0-20240906105554-3673068835d4
 	github.com/wabarc/logger v0.0.0-20210730133522-86bd3f31e792
