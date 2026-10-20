@@ -1,6 +1,6 @@
 module github.com/wabarc/archive.is
 
-go 1.20
+go 1.24
 
 require (
 	github.com/PuerkitoBio/goquery v1.9.2
@@ -18,7 +18,7 @@ require (
 	github.com/fortytw2/leaktest v1.3.0 // indirect
 	github.com/gaukas/godicttls v0.0.3 // indirect
 	github.com/kennygrant/sanitize v1.2.4 // indirect
-	github.com/klauspost/compress v1.16.5 // indirect
+	github.com/klauspost/compress v1.18.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/refraction-networking/utls v1.3.2 // indirect
